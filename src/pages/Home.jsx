@@ -1,19 +1,28 @@
-import React from "react";
+import React, { useState } from "react";
+import Login from "../components/login";
+import Signup from "../components/signup";
 
 const Home = () => {
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
+
   return (
-    <div
-      className="min-h-screen flex flex-col bg-gradient-to-b from-black via-gray-900 to-black text-white"
-    >
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-black via-gray-900 to-black text-white">
       {/* Navigation Bar */}
       <nav className="w-full p-6">
         <div className="flex justify-between items-center">
           <div className="text-3xl font-bold tracking-wide">VIZCRAFT</div>
           <div className="space-x-4">
-            <button className="px-4 py-2 border border-white rounded-full bg-gray-800 hover:bg-gray-700 transition duration-300">
+            <button
+              className="px-4 py-2 border border-white rounded-full bg-gray-800 hover:bg-gray-700 transition duration-300"
+              onClick={() => setShowLogin(true)}
+            >
               Login
             </button>
-            <button className="px-4 py-2 border border-white rounded-full bg-gray-800 hover:bg-gray-700 transition duration-300">
+            <button
+              className="px-4 py-2 border border-white rounded-full bg-gray-800 hover:bg-gray-700 transition duration-300"
+              onClick={() => setShowSignup(true)}
+            >
               Sign Up
             </button>
           </div>
@@ -50,6 +59,10 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Modals */}
+      {showLogin && <Login onClose={() => setShowLogin(false)} />}
+      {showSignup && <Signup onClose={() => setShowSignup(false)} />}
     </div>
   );
 };

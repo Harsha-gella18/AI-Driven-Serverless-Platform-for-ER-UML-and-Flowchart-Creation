@@ -40,3 +40,10 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Add this to your global CSS file */
+.loader {
+  border-width: 2px;
+  border-color: transparent;
+  border-top-color: white;
+}
