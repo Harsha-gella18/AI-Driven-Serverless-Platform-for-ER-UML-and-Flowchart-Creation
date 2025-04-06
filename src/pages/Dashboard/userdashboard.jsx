@@ -19,7 +19,7 @@ const UserDashboard = () => {
       title: "🗃️ ER Diagrams",
       description: "Design and structure your databases with intuitive ER diagrams.",
       buttonLabel: "Start Designing",
-      action: () => navigate("/er-diagram"),
+      action: () => navigate("/ERdiagrams"),
       sampleImage: "/path/to/erdiagram-sample.jpg"
     },
     {

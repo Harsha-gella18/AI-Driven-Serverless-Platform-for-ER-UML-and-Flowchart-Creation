@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { motion } from "framer-motion";
-import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2 } from "lucide-react";
+import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2, Edit2, Check } from "lucide-react";
 
 const ERDiagramGenerator = () => {
   const navigate = useNavigate();
@@ -48,6 +48,10 @@ const ERDiagramGenerator = () => {
     isTotalParticipation: false
   });
   const [selectedManualTab, setSelectedManualTab] = useState("entities");
+  
+  // Editing state
+  const [editingEntity, setEditingEntity] = useState(null);
+  const [editingAttribute, setEditingAttribute] = useState(null);
   
   // Output state
   const [svgContent, setSvgContent] = useState('');
@@ -146,6 +150,47 @@ const ERDiagramGenerator = () => {
     ));
   };
 
+  const startEditEntity = (entity) => {
+    setEditingEntity(entity);
+    setNewEntity({
+      name: entity.name,
+      attributes: [...entity.attributes],
+      newAttribute: "",
+      isKey: false,
+      isMultivalued: false,
+      isDerived: false,
+      isWeak: entity.isWeak
+    });
+  };
+
+  const saveEditedEntity = () => {
+    if (!editingEntity) return;
+    
+    const updatedEntities = entities.map(entity => {
+      if (entity.id === editingEntity.id) {
+        return {
+          ...entity,
+          name: newEntity.name,
+          attributes: [...newEntity.attributes],
+          isWeak: newEntity.isWeak
+        };
+      }
+      return entity;
+    });
+    
+    setEntities(updatedEntities);
+    setEditingEntity(null);
+    setNewEntity({ 
+      name: "", 
+      attributes: [], 
+      newAttribute: "",
+      isKey: false,
+      isMultivalued: false,
+      isDerived: false,
+      isWeak: false
+    });
+  };
+
   const addAttribute = () => {
     if (!newEntity.newAttribute) {
       setError("Attribute cannot be empty");
@@ -165,6 +210,39 @@ const ERDiagramGenerator = () => {
       isDerived: false
     });
     setError(null);
+  };
+
+  const startEditAttribute = (attribute, index) => {
+    setEditingAttribute(index);
+    setNewEntity({
+      ...newEntity,
+      newAttribute: attribute.name,
+      isKey: attribute.isKey,
+      isMultivalued: attribute.isMultivalued,
+      isDerived: attribute.isDerived
+    });
+  };
+
+  const saveEditedAttribute = () => {
+    if (editingAttribute === null || !newEntity.newAttribute) return;
+    
+    const updatedAttributes = [...newEntity.attributes];
+    updatedAttributes[editingAttribute] = {
+      name: newEntity.newAttribute,
+      isKey: newEntity.isKey,
+      isMultivalued: newEntity.isMultivalued,
+      isDerived: newEntity.isDerived
+    };
+    
+    setNewEntity({
+      ...newEntity,
+      attributes: updatedAttributes,
+      newAttribute: "",
+      isKey: false,
+      isMultivalued: false,
+      isDerived: false
+    });
+    setEditingAttribute(null);
   };
 
   const removeAttribute = (index) => {
@@ -357,145 +435,293 @@ const ERDiagramGenerator = () => {
 
                   {selectedManualTab === "entities" ? (
                     <div>
-                      <h3 className="text-xl font-semibold mb-4">Add New Entity</h3>
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1">Entity Name*</label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          value={newEntity.name}
-                          onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
-                          placeholder="Entity name"
-                          required
-                        />
-                      </div>
-
-                      <div className="mb-4">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={newEntity.isWeak}
-                            onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
-                          />
-                          <span className="text-sm">Weak Entity (double border)</span>
-                        </label>
-                      </div>
-
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1">Add Attribute</label>
-                        <div className="flex gap-2 mb-2">
-                          <input
-                            type="text"
-                            className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newEntity.newAttribute}
-                            onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
-                            placeholder="Attribute name"
-                          />
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 mb-2">
-                          <label className="flex items-center text-sm">
+                      {editingEntity ? (
+                        <>
+                          <h3 className="text-xl font-semibold mb-4">Edit Entity: {editingEntity.name}</h3>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">Entity Name*</label>
                             <input
-                              type="checkbox"
-                              className="mr-1"
-                              checked={newEntity.isKey}
-                              onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
+                              type="text"
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newEntity.name}
+                              onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
+                              placeholder="Entity name"
+                              required
                             />
-                            Key
-                          </label>
-                          <label className="flex items-center text-sm">
-                            <input
-                              type="checkbox"
-                              className="mr-1"
-                              checked={newEntity.isMultivalued}
-                              onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
-                            />
-                            Multivalued
-                          </label>
-                          <label className="flex items-center text-sm">
-                            <input
-                              type="checkbox"
-                              className="mr-1"
-                              checked={newEntity.isDerived}
-                              onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
-                            />
-                            Derived
-                          </label>
-                        </div>
-                        <button
-                          onClick={addAttribute}
-                          className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
-                          disabled={!newEntity.newAttribute}
-                        >
-                          <Plus className="w-4 h-4 mr-1" /> Add Attribute
-                        </button>
-                      </div>
+                          </div>
 
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1">Current Attributes</label>
-                        <div className="space-y-1">
-                          {newEntity.attributes.map((attr, index) => (
-                            <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
-                              <div>
-                                <span className="font-mono text-sm">
-                                  {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
-                                  {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
-                                  {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => removeAttribute(index)}
-                                className="text-red-400 hover:text-red-300 p-1"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                          <div className="mb-4">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                className="mr-2"
+                                checked={newEntity.isWeak}
+                                onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
+                              />
+                              <span className="text-sm">Weak Entity (double border)</span>
+                            </label>
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">
+                              {editingAttribute !== null ? "Edit Attribute" : "Add Attribute"}
+                            </label>
+                            <div className="flex gap-2 mb-2">
+                              <input
+                                type="text"
+                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={newEntity.newAttribute}
+                                onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
+                                placeholder="Attribute name"
+                              />
+                              {editingAttribute !== null ? (
+                                <button
+                                  onClick={saveEditedAttribute}
+                                  className="px-3 bg-green-600 hover:bg-green-700 rounded-lg"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                              ) : null}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <motion.button
-                        onClick={addEntity}
-                        whileHover={{ scale: 1.05 }}
-                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
-                        disabled={!newEntity.name}
-                      >
-                        <Plus className="w-4 h-4 mr-1" /> Add Entity
-                      </motion.button>
-
-                      <h3 className="text-xl font-semibold mt-6 mb-4">Current Entities</h3>
-                      <div className="space-y-2">
-                        {entities.map((entity) => (
-                          <div key={entity.id} className="bg-gray-700 p-3 rounded-lg">
-                            <div className="flex justify-between items-center mb-2">
-                              <h4 className={`font-bold ${entity.isWeak ? 'text-purple-300' : 'text-blue-300'}`}>
-                                {entity.name}
-                                {entity.isWeak && <span className="text-xs text-gray-400 ml-2">(Weak)</span>}
-                              </h4>
-                              <button
-                                onClick={() => removeEntity(entity.id)}
-                                className="text-red-400 hover:text-red-300 p-1"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            <div className="grid grid-cols-3 gap-2 mb-2">
+                              <label className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mr-1"
+                                  checked={newEntity.isKey}
+                                  onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
+                                />
+                                Key
+                              </label>
+                              <label className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mr-1"
+                                  checked={newEntity.isMultivalued}
+                                  onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
+                                />
+                                Multivalued
+                              </label>
+                              <label className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mr-1"
+                                  checked={newEntity.isDerived}
+                                  onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
+                                />
+                                Derived
+                              </label>
                             </div>
-                            <div className="text-sm">
-                              {entity.attributes.length > 0 && (
-                                <div>
-                                  <div className="text-gray-400 text-xs mb-1">Attributes:</div>
-                                  {entity.attributes.map((attr, i) => (
-                                    <div key={i} className="font-mono text-xs">
+                            {editingAttribute === null && (
+                              <button
+                                onClick={addAttribute}
+                                className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
+                                disabled={!newEntity.newAttribute}
+                              >
+                                <Plus className="w-4 h-4 mr-1" /> Add Attribute
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">Current Attributes</label>
+                            <div className="space-y-1">
+                              {newEntity.attributes.map((attr, index) => (
+                                <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                                  <div>
+                                    <span className="font-mono text-sm">
                                       {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
                                       {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
                                       {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
-                                    </div>
-                                  ))}
+                                    </span>
+                                  </div>
+                                  <div className="flex">
+                                    <button
+                                      onClick={() => startEditAttribute(attr, index)}
+                                      className="text-blue-400 hover:text-blue-300 p-1 mr-1"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => removeAttribute(index)}
+                                      className="text-red-400 hover:text-red-300 p-1"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </div>
-                              )}
+                              ))}
                             </div>
                           </div>
-                        ))}
-                      </div>
+
+                          <div className="flex gap-2">
+                            <motion.button
+                              onClick={saveEditedEntity}
+                              whileHover={{ scale: 1.05 }}
+                              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
+                              disabled={!newEntity.name}
+                            >
+                              <Save className="w-4 h-4 mr-1" /> Save Changes
+                            </motion.button>
+                            <button
+                              onClick={() => setEditingEntity(null)}
+                              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <h3 className="text-xl font-semibold mb-4">Add New Entity</h3>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">Entity Name*</label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newEntity.name}
+                              onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
+                              placeholder="Entity name"
+                              required
+                            />
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="flex items-center">
+                              <input
+                                type="checkbox"
+                                className="mr-2"
+                                checked={newEntity.isWeak}
+                                onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
+                              />
+                              <span className="text-sm">Weak Entity (double border)</span>
+                            </label>
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">Add Attribute</label>
+                            <div className="flex gap-2 mb-2">
+                              <input
+                                type="text"
+                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={newEntity.newAttribute}
+                                onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
+                                placeholder="Attribute name"
+                              />
+                            </div>
+                            <div className="grid grid-cols-3 gap-2 mb-2">
+                              <label className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mr-1"
+                                  checked={newEntity.isKey}
+                                  onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
+                                />
+                                Key
+                              </label>
+                              <label className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mr-1"
+                                  checked={newEntity.isMultivalued}
+                                  onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
+                                />
+                                Multivalued
+                              </label>
+                              <label className="flex items-center text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mr-1"
+                                  checked={newEntity.isDerived}
+                                  onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
+                                />
+                                Derived
+                              </label>
+                            </div>
+                            <button
+                              onClick={addAttribute}
+                              className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
+                              disabled={!newEntity.newAttribute}
+                            >
+                              <Plus className="w-4 h-4 mr-1" /> Add Attribute
+                            </button>
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium mb-1">Current Attributes</label>
+                            <div className="space-y-1">
+                              {newEntity.attributes.map((attr, index) => (
+                                <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                                  <div>
+                                    <span className="font-mono text-sm">
+                                      {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
+                                      {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
+                                      {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
+                                    </span>
+                                  </div>
+                                  <button
+                                    onClick={() => removeAttribute(index)}
+                                    className="text-red-400 hover:text-red-300 p-1"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <motion.button
+                            onClick={addEntity}
+                            whileHover={{ scale: 1.05 }}
+                            className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
+                            disabled={!newEntity.name}
+                          >
+                            <Plus className="w-4 h-4 mr-1" /> Add Entity
+                          </motion.button>
+
+                          <h3 className="text-xl font-semibold mt-6 mb-4">Current Entities</h3>
+                          <div className="space-y-2">
+                            {entities.map((entity) => (
+                              <div key={entity.id} className="bg-gray-700 p-3 rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                  <h4 className={`font-bold ${entity.isWeak ? 'text-purple-300' : 'text-blue-300'}`}>
+                                    {entity.name}
+                                    {entity.isWeak && <span className="text-xs text-gray-400 ml-2">(Weak)</span>}
+                                  </h4>
+                                  <div className="flex">
+                                    <button
+                                      onClick={() => startEditEntity(entity)}
+                                      className="text-blue-400 hover:text-blue-300 p-1 mr-1"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => removeEntity(entity.id)}
+                                      className="text-red-400 hover:text-red-300 p-1"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="text-sm">
+                                  {entity.attributes.length > 0 && (
+                                    <div>
+                                      <div className="text-gray-400 text-xs mb-1">Attributes:</div>
+                                      {entity.attributes.map((attr, i) => (
+                                        <div key={i} className="font-mono text-xs">
+                                          {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
+                                          {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
+                                          {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div>

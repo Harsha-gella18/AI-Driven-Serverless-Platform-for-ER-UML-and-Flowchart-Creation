@@ -27,6 +27,7 @@ const FlowchartGenerator = () => {
   // Output state
   const [svgContent, setSvgContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingToS3, setIsSavingToS3] = useState(false);
   
   // Current user email (mock)
   const currentUser = { email: 'hgella91@gmail.com' };
@@ -131,7 +132,7 @@ const FlowchartGenerator = () => {
     setEdges(edges.filter((_, i) => i !== index));
   };
 
-  // Save flowchart handler
+  // Save flowchart handler (for preview)
   const saveFlowchart = async () => {
     setIsSaving(true);
     setError(null);
@@ -168,6 +169,67 @@ const FlowchartGenerator = () => {
     }
   };
 
+  // Save flowchart to S3 and DynamoDB
+  const saveToS3 = async () => {
+    if (!svgContent) {
+      setError("No flowchart to save");
+      return;
+    }
+  
+    setIsSavingToS3(true);
+    setError(null);
+    setSuccess(false);
+  
+    try {
+      // Convert SVG content to base64
+      const svgBase64 = btoa(unescape(encodeURIComponent(svgContent)));
+  
+      // Create the request payload
+      const payload = {
+        email: currentUser.email,
+        svg: svgBase64,
+        isBase64Encoded: true // You can use this flag to tell Lambda
+      };
+  
+      console.log("Sending payload:", payload); // Debug log
+  
+      const response = await fetch(
+        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/savenupload',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+  
+      console.log("Response status:", response.status); // Debug log
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+          errorData.message ||
+          `Server returned ${response.status} status`
+        );
+      }
+  
+      const data = await response.json();
+      console.log("Success response:", data); // Debug log
+  
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+      return data.s3_url;
+    } catch (err) {
+      console.error('Full error details:', err);
+      setError(err.message || 'Failed to save flowchart. Please try again.');
+      throw err;
+    } finally {
+      setIsSavingToS3(false);
+    }
+  };
+  
   const downloadSVG = () => {
     if (!svgContent) return;
     
@@ -449,20 +511,43 @@ const FlowchartGenerator = () => {
                 )}
                 
                 {activeTab === "manual" && (
-                  <button
-                    onClick={saveFlowchart}
-                    disabled={isSaving || nodes.length === 0}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Update Flowchart'
-                    )}
-                  </button>
+                  <div className="space-y-3">
+                    <button
+                      onClick={saveFlowchart}
+                      disabled={isSaving || nodes.length === 0}
+                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Update Preview
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={saveToS3}
+                      disabled={isSavingToS3 || !svgContent}
+                      className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                    >
+                      {isSavingToS3 ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4 mr-2" />
+                          Save Flowchart
+                        </>
+                      )}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
