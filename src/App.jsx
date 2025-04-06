@@ -3,15 +3,35 @@ import Home from "./pages/Home";
 import UserDashboard from "./pages/Dashboard/userdashboard";
 import FlowchartGenerator from "./pages/Dashboard/flowcharts/flowchartai";
 import FlowchartMan from "./pages/Dashboard/flowcharts/flowchartman";
+import ProtectedRoute from "./protected";
+import UMLGenerator from "./pages/Dashboard/UMLdiagrams/UMLgenerator";
+import ERDiagramGenerator from "./pages/Dashboard/ERdiagrams/ERdiagram";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<UserDashboard />} /> 
-        <Route path="/flowchart-ai" element={<FlowchartGenerator />} />
-        <Route path='/flowchart-manual' element={<FlowchartMan />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <UserDashboard />
+          </ProtectedRoute>
+        } /> 
+        <Route path="/flowcharts" element={
+          <ProtectedRoute>
+            <FlowchartGenerator />
+          </ProtectedRoute>
+        } />
+        <Route path="/umldiagrams" element={
+          <ProtectedRoute>
+            <UMLGenerator />
+          </ProtectedRoute>
+        } />
+        <Route path="/ERdiagrams" element={
+          <ProtectedRoute>
+            <ERDiagramGenerator />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   );
