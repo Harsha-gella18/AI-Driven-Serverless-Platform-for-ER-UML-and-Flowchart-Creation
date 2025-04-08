@@ -45,11 +45,10 @@ const UMLGenerator = () => {
   // Output state
   const [svgContent, setSvgContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingToS3, setIsSavingToS3] = useState(false);
   
   // Current user email (mock)
-  const currentUser = { email: 'hgella91@gmail.com' };
-
-  // AI Generation handler
+  const currentUser = { email: localStorage.getItem('userEmail') || '' };  // AI Generation handler  // AI Generation handler
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) {
@@ -282,6 +281,68 @@ const UMLGenerator = () => {
     }
   };
 
+  // Save UML to S3 and DynamoDB
+  const saveToS3 = async () => {
+    if (!svgContent) {
+      setError("No UML diagram to save");
+      return;
+    }
+  
+    setIsSavingToS3(true);
+    setError(null);
+    setSuccess(false);
+  
+    try {
+      // Convert SVG content to base64
+      const svgBase64 = btoa(unescape(encodeURIComponent(svgContent)));
+  
+      // Create the request payload
+      const payload = {
+        email: currentUser.email,
+        svg: svgBase64,
+        type: "uml",
+        isBase64Encoded: true
+      };
+  
+      console.log("Sending payload:", payload); // Debug log
+  
+      const response = await fetch(
+        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/savenupload',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+  
+      console.log("Response status:", response.status); // Debug log
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error ||
+          errorData.message ||
+          `Server returned ${response.status} status`
+        );
+      }
+  
+      const data = await response.json();
+      console.log("Success response:", data); // Debug log
+  
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+      return data.s3_url;
+    } catch (err) {
+      console.error('Full error details:', err);
+      setError(err.message || 'Failed to save UML diagram. Please try again.');
+      throw err;
+    } finally {
+      setIsSavingToS3(false);
+    }
+  };
+
   const downloadSVG = () => {
     if (!svgContent) return;
     
@@ -338,9 +399,92 @@ const UMLGenerator = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-8">
-          {/* Input Section */}
-          <div className="lg:col-span-1 space-y-6">
+        <div className="flex flex-col lg:flex-row gap-8 pb-8">
+          {/* Output Section - Moved to left */}
+          <div className="lg:w-2/3">
+            <div className="bg-gray-800 rounded-lg p-6 shadow-lg h-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">UML Diagram Preview</h2>
+                {svgContent && (
+                  <button
+                    onClick={downloadSVG}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
+                  >
+                    <Download className="w-4 h-4 mr-1" /> Download SVG
+                  </button>
+                )}
+              </div>
+
+              {(isGenerating || isSaving || isSavingToS3) && !svgContent ? (
+                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
+                  <Loader2 className="h-12 w-12 text-white mb-4 animate-spin" />
+                  <p className="text-gray-400">
+                    {activeTab === "ai" ? "Generating" : "Saving"} your UML diagram...
+                  </p>
+                </div>
+              ) : svgContent ? (
+                <div className="bg-white rounded-lg overflow-hidden flex justify-center items-center min-h-[500px]">
+                  <div 
+                    className="p-4 w-full h-full overflow-auto flex justify-center"
+                    dangerouslySetInnerHTML={{ __html: svgContent }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
+                  <ArrowRight className="h-16 w-16 text-gray-600 mb-4" />
+                  <p className="text-gray-400 text-center max-w-md">
+                    {activeTab === "ai" 
+                      ? "Describe your system and click 'Generate' to create a UML diagram."
+                      : "Add classes and relationships to build your diagram, then click 'Save' to generate it."}
+                  </p>
+                </div>
+              )}
+
+              {/* Save buttons moved under the diagram */}
+              {activeTab === "manual" && (
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={saveUML}
+                    disabled={isSaving || classes.length === 0}
+                    className="py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Update Preview
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={saveToS3}
+                    disabled={isSavingToS3 || !svgContent}
+                    className="py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                  >
+                    {isSavingToS3 ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save UML Diagram
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Input Section - Moved to right side */}
+          <div className="lg:w-1/3 space-y-6">
             <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
               {activeTab === "ai" ? (
                 <>
@@ -428,7 +572,7 @@ const UMLGenerator = () => {
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
                           {newClass.attributes.map((attr, index) => (
                             <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
                               <span className="font-mono text-sm">{attr}</span>
@@ -460,7 +604,7 @@ const UMLGenerator = () => {
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
                           {newClass.methods.map((method, index) => (
                             <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
                               <span className="font-mono text-sm">{method}</span>
@@ -503,7 +647,7 @@ const UMLGenerator = () => {
                       </div>
 
                       <h3 className="text-xl font-semibold mt-6 mb-4">Current Classes</h3>
-                      <div className="space-y-2">
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                         {classes.map((cls) => (
                           <div key={cls.id} className="bg-gray-700 p-3 rounded-lg">
                             <div className="flex justify-between items-center mb-2">
@@ -618,7 +762,7 @@ const UMLGenerator = () => {
 
                       <h3 className="text-xl font-semibold mt-6 mb-4">Current Relationships</h3>
                       {relationships.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                           {relationships.map((rel) => {
                             const fromClass = classes.find(c => c.id === rel.from);
                             const toClass = classes.find(c => c.id === rel.to);
@@ -654,7 +798,7 @@ const UMLGenerator = () => {
                 </>
               )}
 
-              <div className="mt-6 space-y-2">
+              <div className="mt-4 space-y-2">
                 {error && (
                   <div className="p-2 bg-red-900/50 border border-red-700 rounded-lg text-sm">
                     {error}
@@ -665,66 +809,7 @@ const UMLGenerator = () => {
                     {activeTab === "ai" ? "UML diagram generated! Switch to Manual tab to edit." : "UML diagram saved successfully!"}
                   </div>
                 )}
-                
-                {activeTab === "manual" && (
-                  <button
-                    onClick={saveUML}
-                    disabled={isSaving || classes.length === 0}
-                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Update UML Diagram'
-                    )}
-                  </button>
-                )}
               </div>
-            </div>
-          </div>
-
-          {/* Output Section */}
-          <div className="lg:col-span-2">
-            <div className="bg-gray-800 rounded-lg p-6 shadow-lg h-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">UML Diagram Preview</h2>
-                {svgContent && (
-                  <button
-                    onClick={downloadSVG}
-                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
-                  >
-                    <Download className="w-4 h-4 mr-1" /> Download SVG
-                  </button>
-                )}
-              </div>
-
-              {(isGenerating || isSaving) && !svgContent ? (
-                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
-                  <Loader2 className="h-12 w-12 text-white mb-4 animate-spin" />
-                  <p className="text-gray-400">
-                    {activeTab === "ai" ? "Generating" : "Saving"} your UML diagram...
-                  </p>
-                </div>
-              ) : svgContent ? (
-                <div className="bg-white rounded-lg overflow-hidden flex justify-center items-center min-h-[400px]">
-                  <div 
-                    className="p-4 w-full max-w-full overflow-auto flex justify-center"
-                    dangerouslySetInnerHTML={{ __html: svgContent }}
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
-                  <ArrowRight className="h-16 w-16 text-gray-600 mb-4" />
-                  <p className="text-gray-400 text-center max-w-md">
-                    {activeTab === "ai" 
-                      ? "Describe your system and click 'Generate' to create a UML diagram."
-                      : "Add classes and relationships to build your diagram, then click 'Save' to generate it."}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>

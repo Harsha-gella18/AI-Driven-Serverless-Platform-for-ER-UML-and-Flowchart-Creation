@@ -6,6 +6,7 @@ import FlowchartGenerator from "./pages/Dashboard/flowcharts/flowchartai";
 import ProtectedRoute from "./protected";
 import UMLGenerator from "./pages/Dashboard/UMLdiagrams/UMLgenerator";
 import ERDiagramGenerator from "./pages/Dashboard/ERdiagrams/ERdiagram";
+import History from "./pages/History";
 
 function App() {
   return (
@@ -30,6 +31,11 @@ function App() {
         <Route path="/ERdiagrams" element={
           <ProtectedRoute>
             <ERDiagramGenerator />
+          </ProtectedRoute>
+        } />
+        <Route path="/history" element={
+          <ProtectedRoute>
+            <History />
           </ProtectedRoute>
         } />
       </Routes>

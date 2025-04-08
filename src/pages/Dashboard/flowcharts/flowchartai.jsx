@@ -30,9 +30,7 @@ const FlowchartGenerator = () => {
   const [isSavingToS3, setIsSavingToS3] = useState(false);
   
   // Current user email (mock)
-  const currentUser = { email: 'hgella91@gmail.com' };
-
-  // AI Generation handler
+  const currentUser = { email: localStorage.getItem('userEmail') || '' };  // AI Generation handler  // AI Generation handler
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) {
@@ -139,6 +137,10 @@ const FlowchartGenerator = () => {
     setSuccess(false);
     
     try {
+      if (!currentUser.email) {
+        setError("User email not found. Please log in again.");
+        return;
+      }
       const response = await fetch(
         'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/flowchartgenman',
         {
@@ -188,7 +190,8 @@ const FlowchartGenerator = () => {
       const payload = {
         email: currentUser.email,
         svg: svgBase64,
-        isBase64Encoded: true // You can use this flag to tell Lambda
+        type: 'flowchart',
+        isBase64Encoded: true
       };
   
       console.log("Sending payload:", payload); // Debug log
@@ -286,9 +289,92 @@ const FlowchartGenerator = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-8">
-          {/* Input Section */}
-          <div className="lg:col-span-1 space-y-6">
+        <div className="flex flex-col lg:flex-row gap-8 pb-8">
+          {/* Output Section - Moved to left */}
+          <div className="lg:w-2/3">
+            <div className="bg-gray-800 rounded-lg p-6 shadow-lg h-full">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Flowchart Preview</h2>
+                {svgContent && (
+                  <button
+                    onClick={downloadSVG}
+                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
+                  >
+                    <Download className="w-4 h-4 mr-1" /> Download SVG
+                  </button>
+                )}
+              </div>
+
+              {(isGenerating || isSaving || isSavingToS3) && !svgContent ? (
+                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
+                  <Loader2 className="h-12 w-12 text-white mb-4 animate-spin" />
+                  <p className="text-gray-400">
+                    {activeTab === "ai" ? "Generating" : "Saving"} your flowchart...
+                  </p>
+                </div>
+              ) : svgContent ? (
+                <div className="bg-white rounded-lg overflow-hidden flex justify-center items-center min-h-[500px]">
+                  <div 
+                    className="p-4 w-full h-full overflow-auto flex justify-center"
+                    dangerouslySetInnerHTML={{ __html: svgContent }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
+                  <ArrowRight className="h-16 w-16 text-gray-600 mb-4" />
+                  <p className="text-gray-400 text-center max-w-md">
+                    {activeTab === "ai" 
+                      ? "Enter a description of your flowchart and click 'Generate' to create your diagram."
+                      : "Add nodes and connections to build your flowchart, then click 'Save' to generate the diagram."}
+                  </p>
+                </div>
+              )}
+
+              {/* Save buttons moved under the diagram */}
+              {activeTab === "manual" && (
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={saveFlowchart}
+                    disabled={isSaving || nodes.length === 0}
+                    className="py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Update Preview
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={saveToS3}
+                    disabled={isSavingToS3 || !svgContent}
+                    className="py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                  >
+                    {isSavingToS3 ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Save Flowchart
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Input Section - Moved to right side */}
+          <div className="lg:w-1/3 space-y-6">
             <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
               {activeTab === "ai" ? (
                 <>
@@ -383,7 +469,7 @@ const FlowchartGenerator = () => {
                       </div>
 
                       <h3 className="text-xl font-semibold mt-6 mb-4">Current Nodes</h3>
-                      <div className="space-y-2">
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                         {nodes.map((node) => (
                           <div key={node.id} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
                             <div className="flex items-center">
@@ -470,7 +556,7 @@ const FlowchartGenerator = () => {
 
                       <h3 className="text-xl font-semibold mt-6 mb-4">Current Connections</h3>
                       {edges.length > 0 ? (
-                        <div className="space-y-2">
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                           {edges.map((edge, index) => (
                             <div key={index} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
                               <div className="flex items-center">
@@ -498,7 +584,7 @@ const FlowchartGenerator = () => {
                 </>
               )}
 
-              <div className="mt-6 space-y-2">
+              <div className="mt-4 space-y-2">
                 {error && (
                   <div className="p-2 bg-red-900/50 border border-red-700 rounded-lg text-sm">
                     {error}
@@ -509,89 +595,7 @@ const FlowchartGenerator = () => {
                     {activeTab === "ai" ? "Flowchart generated! Switch to Manual tab to edit." : "Flowchart saved successfully!"}
                   </div>
                 )}
-                
-                {activeTab === "manual" && (
-                  <div className="space-y-3">
-                    <button
-                      onClick={saveFlowchart}
-                      disabled={isSaving || nodes.length === 0}
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Update Preview
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={saveToS3}
-                      disabled={isSavingToS3 || !svgContent}
-                      className="w-full py-3 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
-                    >
-                      {isSavingToS3 ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-4 h-4 mr-2" />
-                          Save Flowchart
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
               </div>
-            </div>
-          </div>
-
-          {/* Output Section */}
-          <div className="lg:col-span-2">
-            <div className="bg-gray-800 rounded-lg p-6 shadow-lg h-full">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Flowchart Preview</h2>
-                {svgContent && (
-                  <button
-                    onClick={downloadSVG}
-                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
-                  >
-                    <Download className="w-4 h-4 mr-1" /> Download SVG
-                  </button>
-                )}
-              </div>
-
-              {(isGenerating || isSaving) && !svgContent ? (
-                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
-                  <Loader2 className="h-12 w-12 text-white mb-4 animate-spin" />
-                  <p className="text-gray-400">
-                    {activeTab === "ai" ? "Generating" : "Saving"} your flowchart...
-                  </p>
-                </div>
-              ) : svgContent ? (
-                <div className="bg-white rounded-lg overflow-hidden flex justify-center items-center min-h-[400px]">
-                  <div 
-                    className="p-4 w-full max-w-full overflow-auto flex justify-center"
-                    dangerouslySetInnerHTML={{ __html: svgContent }}
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-96 bg-gray-900/50 rounded-lg">
-                  <ArrowRight className="h-16 w-16 text-gray-600 mb-4" />
-                  <p className="text-gray-400 text-center max-w-md">
-                    {activeTab === "ai" 
-                      ? "Enter a description of your flowchart and click 'Generate' to create your diagram."
-                      : "Add nodes and connections to build your flowchart, then click 'Save' to generate the diagram."}
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Cookies from 'js-cookie';
+import Cookies from "js-cookie";
+import { jwtDecode } from "jwt-decode";
 
 const Login = ({ onClose }) => {
   const [email, setEmail] = useState("");
@@ -12,7 +13,7 @@ const Login = ({ onClose }) => {
   const handleLogin = async () => {
     setLoading(true);
     setError("");
-    
+
     try {
       const response = await fetch(
         "https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/login_tcg",
@@ -22,22 +23,26 @@ const Login = ({ onClose }) => {
           body: JSON.stringify({ email, password }),
         }
       );
-      
+
       const data = await response.json();
-      
+
       if (response.ok) {
         // Store the token in cookies
-        Cookies.set('authToken', data.token, { 
-          expires: 1, // Expires in 1 day
-          secure: process.env.NODE_ENV === 'production', // Only HTTPS in production
-          sameSite: 'strict'
+        Cookies.set("authToken", data.id_token, {
+          expires: 1,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
         });
-        
-        // Store user data if available
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        }
-        
+
+        // Decode the ID token to get user details
+        const decoded = jwtDecode(data.id_token);
+        const userEmail = decoded.email;
+        const userAID = decoded["cognito:username"];
+
+        // Store user info in localStorage
+        localStorage.setItem("userEmail", userEmail);
+        localStorage.setItem("userAID", userAID);
+
         navigate("/dashboard");
       } else {
         setError(data.error || "Login failed. Please try again.");
