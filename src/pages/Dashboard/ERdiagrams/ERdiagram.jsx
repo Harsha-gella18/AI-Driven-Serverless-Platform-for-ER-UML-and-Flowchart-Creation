@@ -73,7 +73,7 @@ const ERDiagramGenerator = () => {
 
     try {
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/ERDiagramGenCSC',
+        import.meta.env.VITE_API_ER_AI_URL,
         {
           method: 'POST',
           headers: {
@@ -291,7 +291,7 @@ const ERDiagramGenerator = () => {
     
     try {
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/ERDiagramGenMan',
+        import.meta.env.VITE_API_ER_MANUAL_URL,
         {
           method: 'POST',
           headers: {
@@ -346,7 +346,7 @@ const ERDiagramGenerator = () => {
       console.log("Sending payload:", payload); // Debug log
   
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/savenupload',
+        import.meta.env.VITE_API_SAVE_UPLOAD_URL,
         {
           method: 'POST',
           headers: {

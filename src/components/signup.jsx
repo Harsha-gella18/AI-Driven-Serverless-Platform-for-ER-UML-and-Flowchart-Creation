@@ -20,7 +20,7 @@ const Signup = ({ onClose }) => {
     setError("");
     try {
       const response = await fetch(
-        "https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/signup_tcg",
+        import.meta.env.VITE_API_SIGNUP_URL,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

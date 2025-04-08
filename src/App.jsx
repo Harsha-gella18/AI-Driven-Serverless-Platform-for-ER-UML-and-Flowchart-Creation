@@ -7,6 +7,7 @@ import ProtectedRoute from "./protected";
 import UMLGenerator from "./pages/Dashboard/UMLdiagrams/UMLgenerator";
 import ERDiagramGenerator from "./pages/Dashboard/ERdiagrams/ERdiagram";
 import History from "./pages/History";
+import Profile from "./pages/profile";
 
 function App() {
   return (
@@ -36,6 +37,11 @@ function App() {
         <Route path="/history" element={
           <ProtectedRoute>
             <History />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         } />
       </Routes>

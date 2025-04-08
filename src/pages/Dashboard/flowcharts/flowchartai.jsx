@@ -44,7 +44,7 @@ const FlowchartGenerator = () => {
 
     try {
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/FlowChartGenCSC',
+        import.meta.env.VITE_API_FLOWCHART_AI_URL,
         {
           method: 'POST',
           headers: {
@@ -142,7 +142,7 @@ const FlowchartGenerator = () => {
         return;
       }
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/flowchartgenman',
+        import.meta.env.VITE_API_FLOWCHART_MANUAL_URL,
         {
           method: 'POST',
           headers: {
@@ -197,7 +197,7 @@ const FlowchartGenerator = () => {
       console.log("Sending payload:", payload); // Debug log
   
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/savenupload',
+        import.meta.env.VITE_API_SAVE_UPLOAD_URL,
         {
           method: 'POST',
           headers: {

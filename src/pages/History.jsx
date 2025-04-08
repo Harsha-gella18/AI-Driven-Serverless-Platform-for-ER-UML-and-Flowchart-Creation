@@ -22,7 +22,7 @@ const History = () => {
         if (type) body.type = type;
 
         const response = await fetch(
-          `https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/history`,
+          import.meta.env.VITE_API_HISTORY_URL,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

@@ -6,7 +6,7 @@ const VerifyOTP = ({ email, onClose }) => {
   const handleVerifyOTP = async () => {
     try {
       const response = await fetch(
-        "https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/verifyotp_tcg",
+        import.meta.env.VITE_API_VERIFY_OTP_URL,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

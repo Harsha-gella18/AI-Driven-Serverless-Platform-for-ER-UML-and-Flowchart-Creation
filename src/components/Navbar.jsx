@@ -39,7 +39,7 @@ const Navbar = () => {
             <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-lg">
               <button
                 className="block w-full text-left px-4 py-2 text-white hover:bg-gray-700 transition-colors"
-                onClick={() => alert('Profile clicked')}
+                onClick={() => navigate('/profile')}
               >
                 Profile
               </button>

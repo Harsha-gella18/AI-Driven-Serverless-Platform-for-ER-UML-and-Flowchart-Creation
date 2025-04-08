@@ -62,7 +62,7 @@ const UMLGenerator = () => {
 
     try {
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/UMLGenCSC',
+        import.meta.env.VITE_API_UML_AI_URL,
         {
           method: 'POST',
           headers: {
@@ -252,7 +252,7 @@ const UMLGenerator = () => {
     
     try {
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/UMLgenman',
+        import.meta.env.VITE_API_UML_MANUAL_URL,
         {
           method: 'POST',
           headers: {
@@ -307,7 +307,7 @@ const UMLGenerator = () => {
       console.log("Sending payload:", payload); // Debug log
   
       const response = await fetch(
-        'https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/savenupload',
+        import.meta.env.VITE_API_SAVE_UPLOAD_URL,
         {
           method: 'POST',
           headers: {

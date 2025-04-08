@@ -16,7 +16,7 @@ const Login = ({ onClose }) => {
 
     try {
       const response = await fetch(
-        "https://b3gf3vw5tf.execute-api.us-east-1.amazonaws.com/dev/login_tcg",
+        import.meta.env.VITE_API_LOGIN_URL,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
