@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { motion } from "framer-motion";
 import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2 } from "lucide-react";
+import Cookies from "js-cookie";  // Import Cookies library     
 
 const FlowchartGenerator = () => {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ const FlowchartGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
@@ -147,6 +149,7 @@ const FlowchartGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
@@ -202,6 +205,7 @@ const FlowchartGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify(payload),
         }

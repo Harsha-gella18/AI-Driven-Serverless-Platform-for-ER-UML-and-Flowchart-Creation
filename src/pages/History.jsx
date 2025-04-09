@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Cookies from "js-cookie"; // Import Cookies library
 
 const History = () => {
   const [historyItems, setHistoryItems] = useState([]);
@@ -25,7 +26,10 @@ const History = () => {
           import.meta.env.VITE_API_HISTORY_URL,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Cookies.get('authToken')}`, // Use Cookies to get the token
+            },
             body: JSON.stringify(body),
           }
         );

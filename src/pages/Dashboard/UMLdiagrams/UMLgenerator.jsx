@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { motion } from "framer-motion";
 import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2, Edit } from "lucide-react";
+import Cookies from "js-cookie";  // Import Cookies library     
 
 const UMLGenerator = () => {
   const navigate = useNavigate();
@@ -67,6 +68,7 @@ const UMLGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
@@ -257,6 +259,7 @@ const UMLGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
@@ -312,6 +315,7 @@ const UMLGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify(payload),
         }

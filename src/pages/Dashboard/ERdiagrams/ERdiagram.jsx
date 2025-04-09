@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { motion } from "framer-motion";
 import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2, Edit2, Check } from "lucide-react";
+import Cookies from "js-cookie";  // Import Cookies library     
 
 const ERDiagramGenerator = () => {
   const navigate = useNavigate();
@@ -78,6 +79,7 @@ const ERDiagramGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // 'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
@@ -296,6 +298,7 @@ const ERDiagramGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
@@ -351,6 +354,7 @@ const ERDiagramGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify(payload),
         }

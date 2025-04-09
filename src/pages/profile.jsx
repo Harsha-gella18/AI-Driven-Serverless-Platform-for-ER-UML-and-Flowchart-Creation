@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Cookies from "js-cookie";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -23,10 +24,13 @@ const Profile = () => {
         }
 
         const response = await fetch(
-          import.meta.env.VITE_API_PROFILE_URL, // Use environment variable
+          import.meta.env.VITE_API_PROFILE_URL,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Cookies.get('authToken')}`,
+            },
             body: JSON.stringify({ email }),
           }
         );
