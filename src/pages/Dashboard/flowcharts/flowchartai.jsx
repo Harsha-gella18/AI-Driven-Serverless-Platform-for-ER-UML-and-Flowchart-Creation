@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { motion } from "framer-motion";
-import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2 } from "lucide-react";
-import Cookies from "js-cookie";  // Import Cookies library     
+import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2, Maximize2, Minimize2 } from "lucide-react";
+import Cookies from "js-cookie";
 
 const FlowchartGenerator = () => {
   const navigate = useNavigate();
+  const diagramContainerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // State for both AI and manual generation
   const [activeTab, setActiveTab] = useState("ai");
@@ -31,7 +33,49 @@ const FlowchartGenerator = () => {
   const [isSavingToS3, setIsSavingToS3] = useState(false);
   
   // Current user email (mock)
-  const currentUser = { email: localStorage.getItem('userEmail') || '' };  // AI Generation handler  // AI Generation handler
+  const currentUser = { email: localStorage.getItem('userEmail') || '' };
+
+  // Fullscreen toggle function
+  const toggleFullscreen = () => {
+    if (!diagramContainerRef.current) return;
+
+    if (!isFullscreen) {
+      if (diagramContainerRef.current.requestFullscreen) {
+        diagramContainerRef.current.requestFullscreen();
+      } else if (diagramContainerRef.current.webkitRequestFullscreen) {
+        diagramContainerRef.current.webkitRequestFullscreen();
+      } else if (diagramContainerRef.current.msRequestFullscreen) {
+        diagramContainerRef.current.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  };
+
+  // Listen for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // AI Generation handler
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) {
@@ -296,17 +340,36 @@ const FlowchartGenerator = () => {
         <div className="flex flex-col lg:flex-row gap-8 pb-8">
           {/* Output Section - Moved to left */}
           <div className="lg:w-2/3">
-            <div className="bg-gray-800 rounded-lg p-6 shadow-lg h-full">
+            <div 
+              className={`bg-gray-800 rounded-lg p-6 shadow-lg h-full ${isFullscreen ? 'fixed inset-0 z-50 p-0 m-0 bg-gray-900' : ''}`}
+              ref={diagramContainerRef}
+            >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Flowchart Preview</h2>
-                {svgContent && (
-                  <button
-                    onClick={downloadSVG}
-                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
-                  >
-                    <Download className="w-4 h-4 mr-1" /> Download SVG
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {svgContent && (
+                    <>
+                      <button
+                        onClick={toggleFullscreen}
+                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
+                        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                      >
+                        {isFullscreen ? (
+                          <Minimize2 className="w-4 h-4 mr-1" />
+                        ) : (
+                          <Maximize2 className="w-4 h-4 mr-1" />
+                        )}
+                        {isFullscreen ? "Exit" : "Fullscreen"}
+                      </button>
+                      <button
+                        onClick={downloadSVG}
+                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
+                      >
+                        <Download className="w-4 h-4 mr-1" /> Download SVG
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {(isGenerating || isSaving || isSavingToS3) && !svgContent ? (
@@ -317,9 +380,9 @@ const FlowchartGenerator = () => {
                   </p>
                 </div>
               ) : svgContent ? (
-                <div className="bg-white rounded-lg overflow-hidden flex justify-center items-center min-h-[500px]">
+                <div className={`bg-white rounded-lg overflow-hidden ${isFullscreen ? 'h-[calc(100vh-100px)]' : 'min-h-[500px]'}`}>
                   <div 
-                    className="p-4 w-full h-full overflow-auto flex justify-center"
+                    className={`p-4 w-full h-full overflow-auto flex justify-center ${isFullscreen ? 'h-[calc(100vh-100px)]' : ''}`}
                     dangerouslySetInnerHTML={{ __html: svgContent }}
                   />
                 </div>
@@ -335,7 +398,7 @@ const FlowchartGenerator = () => {
               )}
 
               {/* Save buttons moved under the diagram */}
-              {activeTab === "manual" && (
+              {activeTab === "manual" && !isFullscreen && (
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <button
                     onClick={saveFlowchart}
@@ -378,230 +441,232 @@ const FlowchartGenerator = () => {
           </div>
 
           {/* Input Section - Moved to right side */}
-          <div className="lg:w-1/3 space-y-6">
-            <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
-              {activeTab === "ai" ? (
-                <>
-                  <h2 className="text-xl font-semibold mb-4">Generate with AI</h2>
-                  <form onSubmit={handleGenerate}>
-                    <div className="mb-4">
-                      <label htmlFor="prompt" className="block text-sm font-medium mb-2">
-                        Describe your flowchart
-                      </label>
-                      <textarea
-                        id="prompt"
-                        rows="5"
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                        placeholder="Example: Create a flowchart for user login process with success and failure paths"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        disabled={isGenerating}
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
-                      disabled={isGenerating || !prompt.trim()}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        'Generate Flowchart'
-                      )}
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <>
-                  <div className="flex border-b border-gray-700 mb-4">
-                    <button
-                      className={`py-2 px-4 font-medium ${selectedManualTab === "nodes" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
-                      onClick={() => setSelectedManualTab("nodes")}
-                    >
-                      Nodes
-                    </button>
-                    <button
-                      className={`py-2 px-4 font-medium ${selectedManualTab === "edges" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
-                      onClick={() => setSelectedManualTab("edges")}
-                    >
-                      Connections
-                    </button>
-                  </div>
-
-                  {selectedManualTab === "nodes" ? (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">Add New Node</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Label*</label>
-                          <input
-                            type="text"
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newNode.label}
-                            onChange={(e) => setNewNode({...newNode, label: e.target.value})}
-                            placeholder="Node label"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Type*</label>
-                          <select
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newNode.type}
-                            onChange={(e) => setNewNode({...newNode, type: e.target.value})}
-                            required
-                          >
-                            <option value="process">Process</option>
-                            <option value="decision">Decision</option>
-                            <option value="input">Input</option>
-                            <option value="output">Output</option>
-                          </select>
-                        </div>
-                        <div className="flex items-end">
-                          <motion.button
-                            onClick={addNode}
-                            whileHover={{ scale: 1.05 }}
-                            className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
-                          >
-                            <Plus className="w-4 h-4 mr-1" /> Add Node
-                          </motion.button>
-                        </div>
+          {!isFullscreen && (
+            <div className="lg:w-1/3 space-y-6">
+              <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
+                {activeTab === "ai" ? (
+                  <>
+                    <h2 className="text-xl font-semibold mb-4">Generate with AI</h2>
+                    <form onSubmit={handleGenerate}>
+                      <div className="mb-4">
+                        <label htmlFor="prompt" className="block text-sm font-medium mb-2">
+                          Describe your flowchart
+                        </label>
+                        <textarea
+                          id="prompt"
+                          rows="5"
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                          placeholder="Example: Create a flowchart for user login process with success and failure paths"
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          disabled={isGenerating}
+                        />
                       </div>
 
-                      <h3 className="text-xl font-semibold mt-6 mb-4">Current Nodes</h3>
-                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                        {nodes.map((node) => (
-                          <div key={node.id} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
-                            <div className="flex items-center">
-                              <div className={`w-3 h-3 rounded-full mr-3 ${
-                                node.type === 'start' ? 'bg-green-500' : 
-                                node.type === 'end' ? 'bg-red-500' : 
-                                node.type === 'decision' ? 'bg-blue-500' : 
-                                node.type === 'input' || node.type === 'output' ? 'bg-purple-500' : 'bg-yellow-500'
-                              }`}></div>
-                              <span>
-                                <span className="font-mono text-blue-300">#{node.id}</span>: {node.label} 
-                                <span className="text-gray-400 ml-2">({node.type})</span>
-                              </span>
-                            </div>
-                            {!['start', 'end'].includes(node.type) && (
-                              <button
-                                onClick={() => removeNode(node.id)}
-                                className="text-red-400 hover:text-red-300 p-1"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                        disabled={isGenerating || !prompt.trim()}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          'Generate Flowchart'
+                        )}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex border-b border-gray-700 mb-4">
+                      <button
+                        className={`py-2 px-4 font-medium ${selectedManualTab === "nodes" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
+                        onClick={() => setSelectedManualTab("nodes")}
+                      >
+                        Nodes
+                      </button>
+                      <button
+                        className={`py-2 px-4 font-medium ${selectedManualTab === "edges" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
+                        onClick={() => setSelectedManualTab("edges")}
+                      >
+                        Connections
+                      </button>
+                    </div>
+
+                    {selectedManualTab === "nodes" ? (
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Add New Node</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Label*</label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newNode.label}
+                              onChange={(e) => setNewNode({...newNode, label: e.target.value})}
+                              placeholder="Node label"
+                              required
+                            />
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">Add New Connection</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">From Node*</label>
-                          <select
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newEdge.from}
-                            onChange={(e) => setNewEdge({...newEdge, from: e.target.value})}
-                            required
-                          >
-                            <option value="">Select source</option>
-                            {nodes.map(node => (
-                              <option key={`from-${node.id}`} value={node.id}>
-                                #{node.id}: {node.label}
-                              </option>
-                            ))}
-                          </select>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Type*</label>
+                            <select
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newNode.type}
+                              onChange={(e) => setNewNode({...newNode, type: e.target.value})}
+                              required
+                            >
+                              <option value="process">Process</option>
+                              <option value="decision">Decision</option>
+                              <option value="input">Input</option>
+                              <option value="output">Output</option>
+                            </select>
+                          </div>
+                          <div className="flex items-end">
+                            <motion.button
+                              onClick={addNode}
+                              whileHover={{ scale: 1.05 }}
+                              className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
+                            >
+                              <Plus className="w-4 h-4 mr-1" /> Add Node
+                            </motion.button>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">To Node*</label>
-                          <select
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newEdge.to}
-                            onChange={(e) => setNewEdge({...newEdge, to: e.target.value})}
-                            required
-                          >
-                            <option value="">Select target</option>
-                            {nodes.map(node => (
-                              <option key={`to-${node.id}`} value={node.id}>
-                                #{node.id}: {node.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Label (optional)</label>
-                          <input
-                            type="text"
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newEdge.label}
-                            onChange={(e) => setNewEdge({...newEdge, label: e.target.value})}
-                            placeholder="Connection label"
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <motion.button
-                            onClick={addEdge}
-                            whileHover={{ scale: 1.05 }}
-                            className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
-                            disabled={!newEdge.from || !newEdge.to}
-                          >
-                            <Plus className="w-4 h-4 mr-1" /> Add Connection
-                          </motion.button>
-                        </div>
-                      </div>
 
-                      <h3 className="text-xl font-semibold mt-6 mb-4">Current Connections</h3>
-                      {edges.length > 0 ? (
+                        <h3 className="text-xl font-semibold mt-6 mb-4">Current Nodes</h3>
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                          {edges.map((edge, index) => (
-                            <div key={index} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
+                          {nodes.map((node) => (
+                            <div key={node.id} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
                               <div className="flex items-center">
-                                <span className="font-mono text-blue-300">
-                                  #{edge.from} → #{edge.to}
+                                <div className={`w-3 h-3 rounded-full mr-3 ${
+                                  node.type === 'start' ? 'bg-green-500' : 
+                                  node.type === 'end' ? 'bg-red-500' : 
+                                  node.type === 'decision' ? 'bg-blue-500' : 
+                                  node.type === 'input' || node.type === 'output' ? 'bg-purple-500' : 'bg-yellow-500'
+                                }`}></div>
+                                <span>
+                                  <span className="font-mono text-blue-300">#{node.id}</span>: {node.label} 
+                                  <span className="text-gray-400 ml-2">({node.type})</span>
                                 </span>
-                                {edge.label && (
-                                  <span className="ml-2 text-gray-400">[{edge.label}]</span>
-                                )}
                               </div>
-                              <button
-                                onClick={() => removeEdge(index)}
-                                className="text-red-400 hover:text-red-300 p-1"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {!['start', 'end'].includes(node.type) && (
+                                <button
+                                  onClick={() => removeNode(node.id)}
+                                  className="text-red-400 hover:text-red-300 p-1"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        <p className="text-gray-400 italic">No connections added yet</p>
-                      )}
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Add New Connection</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">From Node*</label>
+                            <select
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newEdge.from}
+                              onChange={(e) => setNewEdge({...newEdge, from: e.target.value})}
+                              required
+                            >
+                              <option value="">Select source</option>
+                              {nodes.map(node => (
+                                <option key={`from-${node.id}`} value={node.id}>
+                                  #{node.id}: {node.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">To Node*</label>
+                            <select
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newEdge.to}
+                              onChange={(e) => setNewEdge({...newEdge, to: e.target.value})}
+                              required
+                            >
+                              <option value="">Select target</option>
+                              {nodes.map(node => (
+                                <option key={`to-${node.id}`} value={node.id}>
+                                  #{node.id}: {node.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Label (optional)</label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newEdge.label}
+                              onChange={(e) => setNewEdge({...newEdge, label: e.target.value})}
+                              placeholder="Connection label"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <motion.button
+                              onClick={addEdge}
+                              whileHover={{ scale: 1.05 }}
+                              className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
+                              disabled={!newEdge.from || !newEdge.to}
+                            >
+                              <Plus className="w-4 h-4 mr-1" /> Add Connection
+                            </motion.button>
+                          </div>
+                        </div>
+
+                        <h3 className="text-xl font-semibold mt-6 mb-4">Current Connections</h3>
+                        {edges.length > 0 ? (
+                          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                            {edges.map((edge, index) => (
+                              <div key={index} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
+                                <div className="flex items-center">
+                                  <span className="font-mono text-blue-300">
+                                    #{edge.from} → #{edge.to}
+                                  </span>
+                                  {edge.label && (
+                                    <span className="ml-2 text-gray-400">[{edge.label}]</span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => removeEdge(index)}
+                                  className="text-red-400 hover:text-red-300 p-1"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-gray-400 italic">No connections added yet</p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="mt-4 space-y-2">
+                  {error && (
+                    <div className="p-2 bg-red-900/50 border border-red-700 rounded-lg text-sm">
+                      {error}
                     </div>
                   )}
-                </>
-              )}
-
-              <div className="mt-4 space-y-2">
-                {error && (
-                  <div className="p-2 bg-red-900/50 border border-red-700 rounded-lg text-sm">
-                    {error}
-                  </div>
-                )}
-                {success && (
-                  <div className="p-2 bg-green-900/50 border border-green-700 rounded-lg text-sm">
-                    {activeTab === "ai" ? "Flowchart generated! Switch to Manual tab to edit." : "Flowchart saved successfully!"}
-                  </div>
-                )}
+                  {success && (
+                    <div className="p-2 bg-green-900/50 border border-green-700 rounded-lg text-sm">
+                      {activeTab === "ai" ? "Flowchart generated! Switch to Manual tab to edit." : "Flowchart saved successfully!"}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

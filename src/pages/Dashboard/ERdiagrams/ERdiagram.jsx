@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../../../components/Navbar";
 import { motion } from "framer-motion";
-import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2, Edit2, Check } from "lucide-react";
-import Cookies from "js-cookie";  // Import Cookies library     
+import { ChevronRight, Plus, Trash2, ArrowRight, Save, Loader2, Download, Wand2, Edit2, Check, Maximize2, Minimize2 } from "lucide-react";
+import Cookies from "js-cookie";
 
 const ERDiagramGenerator = () => {
   const navigate = useNavigate();
+  const diagramContainerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   
   // State for both AI and manual generation
   const [activeTab, setActiveTab] = useState("ai");
@@ -60,7 +62,49 @@ const ERDiagramGenerator = () => {
   const [isSavingToS3, setIsSavingToS3] = useState(false);
   
   // Current user email (mock)
-  const currentUser = { email: localStorage.getItem('userEmail') || '' };  // AI Generation handler  // AI Generation handler
+  const currentUser = { email: localStorage.getItem('userEmail') || '' };
+
+  // Fullscreen toggle function
+  const toggleFullscreen = () => {
+    if (!diagramContainerRef.current) return;
+
+    if (!isFullscreen) {
+      if (diagramContainerRef.current.requestFullscreen) {
+        diagramContainerRef.current.requestFullscreen();
+      } else if (diagramContainerRef.current.webkitRequestFullscreen) {
+        diagramContainerRef.current.webkitRequestFullscreen();
+      } else if (diagramContainerRef.current.msRequestFullscreen) {
+        diagramContainerRef.current.msRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  };
+
+  // Listen for fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  // AI Generation handler
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) {
@@ -445,17 +489,36 @@ const ERDiagramGenerator = () => {
         <div className="flex flex-col lg:flex-row gap-8 pb-8">
           {/* Output Section - Moved to top */}
           <div className="lg:w-2/3">
-            <div className="bg-gray-800 rounded-lg p-6 shadow-lg h-full">
+            <div 
+              className={`bg-gray-800 rounded-lg p-6 shadow-lg h-full ${isFullscreen ? 'fixed inset-0 z-50 p-0 m-0 bg-gray-900' : ''}`}
+              ref={diagramContainerRef}
+            >
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">ER Diagram Preview</h2>
-                {svgContent && (
-                  <button
-                    onClick={downloadSVG}
-                    className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
-                  >
-                    <Download className="w-4 h-4 mr-1" /> Download SVG
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {svgContent && (
+                    <>
+                      <button
+                        onClick={toggleFullscreen}
+                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
+                        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                      >
+                        {isFullscreen ? (
+                          <Minimize2 className="w-4 h-4 mr-1" />
+                        ) : (
+                          <Maximize2 className="w-4 h-4 mr-1" />
+                        )}
+                        {isFullscreen ? "Exit" : "Fullscreen"}
+                      </button>
+                      <button
+                        onClick={downloadSVG}
+                        className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center"
+                      >
+                        <Download className="w-4 h-4 mr-1" /> Download SVG
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {(isGenerating || isSaving || isSavingToS3) && !svgContent ? (
@@ -466,9 +529,9 @@ const ERDiagramGenerator = () => {
                   </p>
                 </div>
               ) : svgContent ? (
-                <div className="bg-white rounded-lg overflow-hidden flex justify-center items-center min-h-[500px]">
+                <div className={`bg-white rounded-lg overflow-hidden ${isFullscreen ? 'h-[calc(100vh-100px)]' : 'min-h-[500px]'}`}>
                   <div 
-                    className="p-4 w-full h-full overflow-auto flex justify-center"
+                    className={`p-4 w-full h-full overflow-auto flex justify-center ${isFullscreen ? 'h-[calc(100vh-100px)]' : ''}`}
                     dangerouslySetInnerHTML={{ __html: svgContent }}
                   />
                 </div>
@@ -484,7 +547,7 @@ const ERDiagramGenerator = () => {
               )}
 
               {/* Save buttons moved under the diagram */}
-              {activeTab === "manual" && (
+              {activeTab === "manual" && !isFullscreen && (
                 <div className="mt-6 grid grid-cols-2 gap-3">
                   <button
                     onClick={saveERDiagram}
@@ -527,140 +590,266 @@ const ERDiagramGenerator = () => {
           </div>
 
           {/* Input Section - Moved to right side */}
-          <div className="lg:w-1/3 space-y-6">
-            <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
-              {activeTab === "ai" ? (
-                <>
-                  <h2 className="text-xl font-semibold mb-4">Generate with AI</h2>
-                  <form onSubmit={handleGenerate}>
-                    <div className="mb-4">
-                      <label htmlFor="prompt" className="block text-sm font-medium mb-2">
-                        Describe your database schema
-                      </label>
-                      <textarea
-                        id="prompt"
-                        rows="5"
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
-                        placeholder="Example: Create an ER diagram for an e-commerce system with Users, Products, Orders and Payments"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        disabled={isGenerating}
-                      />
+          {!isFullscreen && (
+            <div className="lg:w-1/3 space-y-6">
+              <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
+                {activeTab === "ai" ? (
+                  <>
+                    <h2 className="text-xl font-semibold mb-4">Generate with AI</h2>
+                    <form onSubmit={handleGenerate}>
+                      <div className="mb-4">
+                        <label htmlFor="prompt" className="block text-sm font-medium mb-2">
+                          Describe your database schema
+                        </label>
+                        <textarea
+                          id="prompt"
+                          rows="5"
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white"
+                          placeholder="Example: Create an ER diagram for an e-commerce system with Users, Products, Orders and Payments"
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          disabled={isGenerating}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
+                        disabled={isGenerating || !prompt.trim()}
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          'Generate ER Diagram'
+                        )}
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex border-b border-gray-700 mb-4">
+                      <button
+                        className={`py-2 px-4 font-medium ${selectedManualTab === "entities" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
+                        onClick={() => setSelectedManualTab("entities")}
+                      >
+                        Entities
+                      </button>
+                      <button
+                        className={`py-2 px-4 font-medium ${selectedManualTab === "relationships" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
+                        onClick={() => setSelectedManualTab("relationships")}
+                      >
+                        Relationships
+                      </button>
                     </div>
 
-                    <button
-                      type="submit"
-                      className="w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center transition-colors disabled:opacity-50"
-                      disabled={isGenerating || !prompt.trim()}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
-                        </>
-                      ) : (
-                        'Generate ER Diagram'
-                      )}
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <>
-                  <div className="flex border-b border-gray-700 mb-4">
-                    <button
-                      className={`py-2 px-4 font-medium ${selectedManualTab === "entities" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
-                      onClick={() => setSelectedManualTab("entities")}
-                    >
-                      Entities
-                    </button>
-                    <button
-                      className={`py-2 px-4 font-medium ${selectedManualTab === "relationships" ? "text-blue-400 border-b-2 border-blue-400" : "text-gray-400"}`}
-                      onClick={() => setSelectedManualTab("relationships")}
-                    >
-                      Relationships
-                    </button>
-                  </div>
-
-                  {selectedManualTab === "entities" ? (
-                    <div>
-                      {editingEntity ? (
-                        <>
-                          <h3 className="text-xl font-semibold mb-4">Edit Entity: {editingEntity.name}</h3>
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Entity Name*</label>
-                            <input
-                              type="text"
-                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              value={newEntity.name}
-                              onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
-                              placeholder="Entity name"
-                              required
-                            />
-                          </div>
-
-                          <div className="mb-4">
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                className="mr-2"
-                                checked={newEntity.isWeak}
-                                onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
-                              />
-                              <span className="text-sm">Weak Entity (double border)</span>
-                            </label>
-                          </div>
-
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">
-                              {editingAttribute !== null ? "Edit Attribute" : "Add Attribute"}
-                            </label>
-                            <div className="flex gap-2 mb-2">
+                    {selectedManualTab === "entities" ? (
+                      <div>
+                        {editingEntity ? (
+                          <>
+                            <h3 className="text-xl font-semibold mb-4">Edit Entity: {editingEntity.name}</h3>
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium mb-1">Entity Name*</label>
                               <input
                                 type="text"
-                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                value={newEntity.newAttribute}
-                                onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
-                                placeholder="Attribute name"
+                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={newEntity.name}
+                                onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
+                                placeholder="Entity name"
+                                required
                               />
-                              {editingAttribute !== null ? (
+                            </div>
+
+                            <div className="mb-4">
+                              <label className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  className="mr-2"
+                                  checked={newEntity.isWeak}
+                                  onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
+                                />
+                                <span className="text-sm">Weak Entity (double border)</span>
+                              </label>
+                            </div>
+
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium mb-1">
+                                {editingAttribute !== null ? "Edit Attribute" : "Add Attribute"}
+                              </label>
+                              <div className="flex gap-2 mb-2">
+                                <input
+                                  type="text"
+                                  className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  value={newEntity.newAttribute}
+                                  onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
+                                  placeholder="Attribute name"
+                                />
+                                {editingAttribute !== null ? (
+                                  <button
+                                    onClick={saveEditedAttribute}
+                                    className="px-3 bg-green-600 hover:bg-green-700 rounded-lg"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                ) : null}
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 mb-2">
+                                <label className="flex items-center text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="mr-1"
+                                    checked={newEntity.isKey}
+                                    onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
+                                  />
+                                  Key
+                                </label>
+                                <label className="flex items-center text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="mr-1"
+                                    checked={newEntity.isMultivalued}
+                                    onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
+                                  />
+                                  Multivalued
+                                </label>
+                                <label className="flex items-center text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="mr-1"
+                                    checked={newEntity.isDerived}
+                                    onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
+                                  />
+                                  Derived
+                                </label>
+                              </div>
+                              {editingAttribute === null && (
                                 <button
-                                  onClick={saveEditedAttribute}
-                                  className="px-3 bg-green-600 hover:bg-green-700 rounded-lg"
+                                  onClick={addAttribute}
+                                  className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
+                                  disabled={!newEntity.newAttribute}
                                 >
-                                  <Check className="w-4 h-4" />
+                                  <Plus className="w-4 h-4 mr-1" /> Add Attribute
                                 </button>
-                              ) : null}
+                              )}
                             </div>
-                            <div className="grid grid-cols-3 gap-2 mb-2">
-                              <label className="flex items-center text-sm">
+
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium mb-1">Current Attributes</label>
+                              <div className="space-y-1">
+                                {newEntity.attributes.map((attr, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                                    <div>
+                                      <span className="font-mono text-sm">
+                                        {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
+                                        {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
+                                        {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
+                                      </span>
+                                    </div>
+                                    <div className="flex">
+                                      <button
+                                        onClick={() => startEditAttribute(attr, index)}
+                                        className="text-blue-400 hover:text-blue-300 p-1 mr-1"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => removeAttribute(index)}
+                                        className="text-red-400 hover:text-red-300 p-1"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <motion.button
+                                onClick={saveEditedEntity}
+                                whileHover={{ scale: 1.05 }}
+                                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
+                                disabled={!newEntity.name}
+                              >
+                                <Save className="w-4 h-4 mr-1" /> Save Changes
+                              </motion.button>
+                              <button
+                                onClick={() => setEditingEntity(null)}
+                                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <h3 className="text-xl font-semibold mb-4">Add New Entity</h3>
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium mb-1">Entity Name*</label>
+                              <input
+                                type="text"
+                                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                value={newEntity.name}
+                                onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
+                                placeholder="Entity name"
+                                required
+                              />
+                            </div>
+
+                            <div className="mb-4">
+                              <label className="flex items-center">
                                 <input
                                   type="checkbox"
-                                  className="mr-1"
-                                  checked={newEntity.isKey}
-                                  onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
+                                  className="mr-2"
+                                  checked={newEntity.isWeak}
+                                  onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
                                 />
-                                Key
-                              </label>
-                              <label className="flex items-center text-sm">
-                                <input
-                                  type="checkbox"
-                                  className="mr-1"
-                                  checked={newEntity.isMultivalued}
-                                  onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
-                                />
-                                Multivalued
-                              </label>
-                              <label className="flex items-center text-sm">
-                                <input
-                                  type="checkbox"
-                                  className="mr-1"
-                                  checked={newEntity.isDerived}
-                                  onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
-                                />
-                                Derived
+                                <span className="text-sm">Weak Entity (double border)</span>
                               </label>
                             </div>
-                            {editingAttribute === null && (
+
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium mb-1">Add Attribute</label>
+                              <div className="flex gap-2 mb-2">
+                                <input
+                                  type="text"
+                                  className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  value={newEntity.newAttribute}
+                                  onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
+                                  placeholder="Attribute name"
+                                />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 mb-2">
+                                <label className="flex items-center text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="mr-1"
+                                    checked={newEntity.isKey}
+                                    onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
+                                  />
+                                  Key
+                                </label>
+                                <label className="flex items-center text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="mr-1"
+                                    checked={newEntity.isMultivalued}
+                                    onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
+                                  />
+                                  Multivalued
+                                </label>
+                                <label className="flex items-center text-sm">
+                                  <input
+                                    type="checkbox"
+                                    className="mr-1"
+                                    checked={newEntity.isDerived}
+                                    onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
+                                  />
+                                  Derived
+                                </label>
+                              </div>
                               <button
                                 onClick={addAttribute}
                                 className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
@@ -668,28 +857,20 @@ const ERDiagramGenerator = () => {
                               >
                                 <Plus className="w-4 h-4 mr-1" /> Add Attribute
                               </button>
-                            )}
-                          </div>
+                            </div>
 
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Current Attributes</label>
-                            <div className="space-y-1">
-                              {newEntity.attributes.map((attr, index) => (
-                                <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
-                                  <div>
-                                    <span className="font-mono text-sm">
-                                      {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
-                                      {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
-                                      {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
-                                    </span>
-                                  </div>
-                                  <div className="flex">
-                                    <button
-                                      onClick={() => startEditAttribute(attr, index)}
-                                      className="text-blue-400 hover:text-blue-300 p-1 mr-1"
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium mb-1">Current Attributes</label>
+                              <div className="space-y-1">
+                                {newEntity.attributes.map((attr, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                                    <div>
+                                      <span className="font-mono text-sm">
+                                        {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
+                                        {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
+                                        {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
+                                      </span>
+                                    </div>
                                     <button
                                       onClick={() => removeAttribute(index)}
                                       className="text-red-400 hover:text-red-300 p-1"
@@ -697,327 +878,211 @@ const ERDiagramGenerator = () => {
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <motion.button
+                              onClick={addEntity}
+                              whileHover={{ scale: 1.05 }}
+                              className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
+                              disabled={!newEntity.name}
+                            >
+                              <Plus className="w-4 h-4 mr-1" /> Add Entity
+                            </motion.button>
+
+                            <h3 className="text-xl font-semibold mt-6 mb-4">Current Entities</h3>
+                            <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                              {entities.map((entity) => (
+                                <div key={entity.id} className="bg-gray-700 p-3 rounded-lg">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <h4 className={`font-bold ${entity.isWeak ? 'text-purple-300' : 'text-blue-300'}`}>
+                                      {entity.name}
+                                      {entity.isWeak && <span className="text-xs text-gray-400 ml-2">(Weak)</span>}
+                                    </h4>
+                                    <div className="flex">
+                                      <button
+                                        onClick={() => startEditEntity(entity)}
+                                        className="text-blue-400 hover:text-blue-300 p-1 mr-1"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => removeEntity(entity.id)}
+                                        className="text-red-400 hover:text-red-300 p-1"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <div className="text-sm">
+                                    {entity.attributes.length > 0 && (
+                                      <div>
+                                        <div className="text-gray-400 text-xs mb-1">Attributes:</div>
+                                        {entity.attributes.map((attr, i) => (
+                                          <div key={i} className="font-mono text-xs">
+                                            {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
+                                            {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
+                                            {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <motion.button
-                              onClick={saveEditedEntity}
-                              whileHover={{ scale: 1.05 }}
-                              className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
-                              disabled={!newEntity.name}
-                            >
-                              <Save className="w-4 h-4 mr-1" /> Save Changes
-                            </motion.button>
-                            <button
-                              onClick={() => setEditingEntity(null)}
-                              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <h3 className="text-xl font-semibold mb-4">Add New Entity</h3>
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Entity Name*</label>
-                            <input
-                              type="text"
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <h3 className="text-xl font-semibold mb-4">Add New Relationship</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">From Entity*</label>
+                            <select
                               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              value={newEntity.name}
-                              onChange={(e) => setNewEntity({...newEntity, name: e.target.value})}
-                              placeholder="Entity name"
+                              value={newRelationship.from}
+                              onChange={(e) => setNewRelationship({...newRelationship, from: e.target.value})}
                               required
-                            />
-                          </div>
-
-                          <div className="mb-4">
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                className="mr-2"
-                                checked={newEntity.isWeak}
-                                onChange={(e) => setNewEntity({...newEntity, isWeak: e.target.checked})}
-                              />
-                              <span className="text-sm">Weak Entity (double border)</span>
-                            </label>
-                          </div>
-
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Add Attribute</label>
-                            <div className="flex gap-2 mb-2">
-                              <input
-                                type="text"
-                                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                value={newEntity.newAttribute}
-                                onChange={(e) => setNewEntity({...newEntity, newAttribute: e.target.value})}
-                                placeholder="Attribute name"
-                              />
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 mb-2">
-                              <label className="flex items-center text-sm">
-                                <input
-                                  type="checkbox"
-                                  className="mr-1"
-                                  checked={newEntity.isKey}
-                                  onChange={(e) => setNewEntity({...newEntity, isKey: e.target.checked})}
-                                />
-                                Key
-                              </label>
-                              <label className="flex items-center text-sm">
-                                <input
-                                  type="checkbox"
-                                  className="mr-1"
-                                  checked={newEntity.isMultivalued}
-                                  onChange={(e) => setNewEntity({...newEntity, isMultivalued: e.target.checked})}
-                                />
-                                Multivalued
-                              </label>
-                              <label className="flex items-center text-sm">
-                                <input
-                                  type="checkbox"
-                                  className="mr-1"
-                                  checked={newEntity.isDerived}
-                                  onChange={(e) => setNewEntity({...newEntity, isDerived: e.target.checked})}
-                                />
-                                Derived
-                              </label>
-                            </div>
-                            <button
-                              onClick={addAttribute}
-                              className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
-                              disabled={!newEntity.newAttribute}
                             >
-                              <Plus className="w-4 h-4 mr-1" /> Add Attribute
-                            </button>
+                              <option value="">Select source</option>
+                              {entities.map(entity => (
+                                <option key={`from-${entity.id}`} value={entity.id}>
+                                  {entity.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">To Entity*</label>
+                            <select
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newRelationship.to}
+                              onChange={(e) => setNewRelationship({...newRelationship, to: e.target.value})}
+                              required
+                            >
+                              <option value="">Select target</option>
+                              {entities.map(entity => (
+                                <option key={`to-${entity.id}`} value={entity.id}>
+                                  {entity.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Type*</label>
+                            <select
+                              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              value={newRelationship.type}
+                              onChange={(e) => setNewRelationship({...newRelationship, type: e.target.value})}
+                              required
+                            >
+                              <option value="one-to-one">One-to-One</option>
+                              <option value="one-to-many">One-to-Many</option>
+                              <option value="many-to-many">Many-to-Many</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium mb-1">Label (optional)</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={newRelationship.label}
+                            onChange={(e) => setNewRelationship({...newRelationship, label: e.target.value})}
+                            placeholder="e.g., places, contains"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="mr-2"
+                              checked={newRelationship.isIdentifying}
+                              onChange={(e) => setNewRelationship({...newRelationship, isIdentifying: e.target.checked})}
+                            />
+                            <span className="text-sm">Identifying Relationship</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="mr-2"
+                              checked={newRelationship.isTotalParticipation}
+                              onChange={(e) => setNewRelationship({...newRelationship, isTotalParticipation: e.target.checked})}
+                            />
+                            <span className="text-sm">Total Participation</span>
+                          </label>
+                        </div>
+                        <motion.button
+                          onClick={addRelationship}
+                          whileHover={{ scale: 1.05 }}
+                          className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
+                          disabled={!newRelationship.from || !newRelationship.to}
+                        >
+                          <Plus className="w-4 h-4 mr-1" /> Add Relationship
+                        </motion.button>
 
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium mb-1">Current Attributes</label>
-                            <div className="space-y-1">
-                              {newEntity.attributes.map((attr, index) => (
-                                <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
-                                  <div>
-                                    <span className="font-mono text-sm">
-                                      {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
-                                      {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
-                                      {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
+                        <h3 className="text-xl font-semibold mt-6 mb-4">Current Relationships</h3>
+                        {relationships.length > 0 ? (
+                          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                            {relationships.map((rel) => {
+                              const fromEntity = entities.find(e => e.id === rel.from);
+                              const toEntity = entities.find(e => e.id === rel.to);
+                              return (
+                                <div key={rel.id} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
+                                  <div className="flex items-center">
+                                    <span className="font-bold text-blue-300">{fromEntity?.name}</span>
+                                    <span className="mx-2 text-gray-400">
+                                      {rel.type === 'one-to-one' ? '1 — 1' : 
+                                       rel.type === 'one-to-many' ? '1 — M' : 
+                                       'M — M'}
                                     </span>
+                                    <span className="font-bold text-blue-300">{toEntity?.name}</span>
+                                    {rel.label && (
+                                      <span className="ml-2 text-gray-400">[{rel.label}]</span>
+                                    )}
+                                    {rel.isIdentifying && (
+                                      <span className="ml-2 text-xs text-purple-300">(ID)</span>
+                                    )}
+                                    {rel.isTotalParticipation && (
+                                      <span className="ml-2 text-xs text-green-300">(Total)</span>
+                                    )}
                                   </div>
                                   <button
-                                    onClick={() => removeAttribute(index)}
+                                    onClick={() => removeRelationship(rel.id)}
                                     className="text-red-400 hover:text-red-300 p-1"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
-                              ))}
-                            </div>
+                              );
+                            })}
                           </div>
-
-                          <motion.button
-                            onClick={addEntity}
-                            whileHover={{ scale: 1.05 }}
-                            className="w-full py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium flex items-center justify-center"
-                            disabled={!newEntity.name}
-                          >
-                            <Plus className="w-4 h-4 mr-1" /> Add Entity
-                          </motion.button>
-
-                          <h3 className="text-xl font-semibold mt-6 mb-4">Current Entities</h3>
-                          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                            {entities.map((entity) => (
-                              <div key={entity.id} className="bg-gray-700 p-3 rounded-lg">
-                                <div className="flex justify-between items-center mb-2">
-                                  <h4 className={`font-bold ${entity.isWeak ? 'text-purple-300' : 'text-blue-300'}`}>
-                                    {entity.name}
-                                    {entity.isWeak && <span className="text-xs text-gray-400 ml-2">(Weak)</span>}
-                                  </h4>
-                                  <div className="flex">
-                                    <button
-                                      onClick={() => startEditEntity(entity)}
-                                      className="text-blue-400 hover:text-blue-300 p-1 mr-1"
-                                    >
-                                      <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => removeEntity(entity.id)}
-                                      className="text-red-400 hover:text-red-300 p-1"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-                                <div className="text-sm">
-                                  {entity.attributes.length > 0 && (
-                                    <div>
-                                      <div className="text-gray-400 text-xs mb-1">Attributes:</div>
-                                      {entity.attributes.map((attr, i) => (
-                                        <div key={i} className="font-mono text-xs">
-                                          {attr.isKey ? <span className="underline">{attr.name}</span> : attr.name}
-                                          {attr.isMultivalued && <span className="text-xs text-gray-400 ml-1">(M)</span>}
-                                          {attr.isDerived && <span className="text-xs text-gray-400 ml-1">(D)</span>}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">Add New Relationship</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">From Entity*</label>
-                          <select
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newRelationship.from}
-                            onChange={(e) => setNewRelationship({...newRelationship, from: e.target.value})}
-                            required
-                          >
-                            <option value="">Select source</option>
-                            {entities.map(entity => (
-                              <option key={`from-${entity.id}`} value={entity.id}>
-                                {entity.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">To Entity*</label>
-                          <select
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newRelationship.to}
-                            onChange={(e) => setNewRelationship({...newRelationship, to: e.target.value})}
-                            required
-                          >
-                            <option value="">Select target</option>
-                            {entities.map(entity => (
-                              <option key={`to-${entity.id}`} value={entity.id}>
-                                {entity.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Type*</label>
-                          <select
-                            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            value={newRelationship.type}
-                            onChange={(e) => setNewRelationship({...newRelationship, type: e.target.value})}
-                            required
-                          >
-                            <option value="one-to-one">One-to-One</option>
-                            <option value="one-to-many">One-to-Many</option>
-                            <option value="many-to-many">Many-to-Many</option>
-                          </select>
-                        </div>
+                        ) : (
+                          <p className="text-gray-400 italic">No relationships added yet</p>
+                        )}
                       </div>
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium mb-1">Label (optional)</label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          value={newRelationship.label}
-                          onChange={(e) => setNewRelationship({...newRelationship, label: e.target.value})}
-                          placeholder="e.g., places, contains"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={newRelationship.isIdentifying}
-                            onChange={(e) => setNewRelationship({...newRelationship, isIdentifying: e.target.checked})}
-                          />
-                          <span className="text-sm">Identifying Relationship</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            className="mr-2"
-                            checked={newRelationship.isTotalParticipation}
-                            onChange={(e) => setNewRelationship({...newRelationship, isTotalParticipation: e.target.checked})}
-                          />
-                          <span className="text-sm">Total Participation</span>
-                        </label>
-                      </div>
-                      <motion.button
-                        onClick={addRelationship}
-                        whileHover={{ scale: 1.05 }}
-                        className="w-full py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium flex items-center justify-center"
-                        disabled={!newRelationship.from || !newRelationship.to}
-                      >
-                        <Plus className="w-4 h-4 mr-1" /> Add Relationship
-                      </motion.button>
+                    )}
+                  </>
+                )}
 
-                      <h3 className="text-xl font-semibold mt-6 mb-4">Current Relationships</h3>
-                      {relationships.length > 0 ? (
-                        <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                          {relationships.map((rel) => {
-                            const fromEntity = entities.find(e => e.id === rel.from);
-                            const toEntity = entities.find(e => e.id === rel.to);
-                            return (
-                              <div key={rel.id} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
-                                <div className="flex items-center">
-                                  <span className="font-bold text-blue-300">{fromEntity?.name}</span>
-                                  <span className="mx-2 text-gray-400">
-                                    {rel.type === 'one-to-one' ? '1 — 1' : 
-                                     rel.type === 'one-to-many' ? '1 — M' : 
-                                     'M — M'}
-                                  </span>
-                                  <span className="font-bold text-blue-300">{toEntity?.name}</span>
-                                  {rel.label && (
-                                    <span className="ml-2 text-gray-400">[{rel.label}]</span>
-                                  )}
-                                  {rel.isIdentifying && (
-                                    <span className="ml-2 text-xs text-purple-300">(ID)</span>
-                                  )}
-                                  {rel.isTotalParticipation && (
-                                    <span className="ml-2 text-xs text-green-300">(Total)</span>
-                                  )}
-                                </div>
-                                <button
-                                  onClick={() => removeRelationship(rel.id)}
-                                  className="text-red-400 hover:text-red-300 p-1"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-gray-400 italic">No relationships added yet</p>
-                      )}
+                <div className="mt-4 space-y-2">
+                  {error && (
+                    <div className="p-2 bg-red-900/50 border border-red-700 rounded-lg text-sm">
+                      {error}
                     </div>
                   )}
-                </>
-              )}
-
-              <div className="mt-4 space-y-2">
-                {error && (
-                  <div className="p-2 bg-red-900/50 border border-red-700 rounded-lg text-sm">
-                    {error}
-                  </div>
-                )}
-                {success && (
-                  <div className="p-2 bg-green-900/50 border border-green-700 rounded-lg text-sm">
-                    {activeTab === "ai" ? "ER diagram generated! Switch to Manual tab to edit." : "ER diagram saved successfully!"}
-                  </div>
-                )}
+                  {success && (
+                    <div className="p-2 bg-green-900/50 border border-green-700 rounded-lg text-sm">
+                      {activeTab === "ai" ? "ER diagram generated! Switch to Manual tab to edit." : "ER diagram saved successfully!"}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
