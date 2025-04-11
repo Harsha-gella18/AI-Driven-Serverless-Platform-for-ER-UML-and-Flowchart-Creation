@@ -22,7 +22,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="w-full p-6 bg-gradient-to-r from-gray-900 to-gray-800 border-b border-gray-700">
+    <nav className="w-full p-4 bg-gradient-to-r from-gray-900 to-gray-800 border-b border-gray-700">
       <div className="flex justify-between items-center">
         {/* App Name */}
         <div className="text-3xl font-bold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">

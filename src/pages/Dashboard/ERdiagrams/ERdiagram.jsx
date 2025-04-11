@@ -79,7 +79,7 @@ const ERDiagramGenerator = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // 'Authorization': `Bearer ${Cookies.get('authToken')}`,
+            'Authorization': `Bearer ${Cookies.get('authToken')}`,
           },
           body: JSON.stringify({
             email: currentUser.email,
