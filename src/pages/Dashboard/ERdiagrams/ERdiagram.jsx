@@ -11,7 +11,7 @@ const ERDiagramGenerator = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   
   // State for both AI and manual generation
-  const [activeTab, setActiveTab] = useState("ai");
+  const [activeTab, setActiveTab] = useState("manual");
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
