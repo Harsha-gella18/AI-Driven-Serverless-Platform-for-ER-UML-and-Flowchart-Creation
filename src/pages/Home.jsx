@@ -10,20 +10,20 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-black via-gray-900 to-black text-white">
       {/* Navigation Bar */}
-      <nav className="w-full p-6 bg-gray-800 shadow-lg">
-        <div className="flex justify-between items-center px-6">
-          <div className="text-3xl font-bold tracking-wide text-blue-400">
+      <nav className="w-full py-4 bg-gray-800 shadow-md">
+        <div className="flex justify-between items-center px-4">
+          <div className="text-2xl font-bold tracking-wide text-blue-400">
             VIZCRAFT
           </div>
-          <div className="space-x-4">
+          <div className="space-x-3">
             <button
-              className="px-4 py-2 border border-blue-400 rounded-full bg-gray-900 hover:bg-blue-700 hover:text-white transition duration-300"
+              className="px-3 py-1 border border-blue-400 rounded-full bg-gray-900 hover:bg-blue-700 hover:text-white transition duration-300 text-sm"
               onClick={() => setShowLogin(true)}
             >
               Login
             </button>
             <button
-              className="px-4 py-2 border border-blue-400 rounded-full bg-gray-900 hover:bg-blue-700 hover:text-white transition duration-300"
+              className="px-3 py-1 border border-blue-400 rounded-full bg-gray-900 hover:bg-blue-700 hover:text-white transition duration-300 text-sm"
               onClick={() => setShowSignup(true)}
             >
               Sign Up
