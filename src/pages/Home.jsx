@@ -78,7 +78,7 @@ const Home = () => {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-800 py-8 text-center text-gray-400">
+      <footer className="bg-gray-800 py-3 text-center text-gray-400">
         <p>© 2025 VIZCRAFT. All rights reserved.</p>
       </footer>
 
